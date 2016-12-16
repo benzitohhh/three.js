@@ -2,6 +2,25 @@
  * @author TatumCreative (Greg Tatum) / http://gregtatum.com/
  */
 
+
+// BEN NOTES:
+// "geometry.js" demos
+//
+// Requirements: dat.GUI (i.e. global var "gui"): https://github.com/dataarts/dat.gui
+//
+// On running... exports global var "guis",
+//               whic contains various X(mesh) functions.
+//               We assume "mesh" arg has two child meshes.
+//
+// Calling X(mesh):
+//   - creates a 'data' object (various params)
+//   - creates a generateGeometry() fn (acts on the mesh)
+//   - binds generateGeometry, data to various dat.GUI controls
+//   - calls generateGeometry()
+
+
+
+
 var twoPi = Math.PI * 2;
 
 var constants = {
