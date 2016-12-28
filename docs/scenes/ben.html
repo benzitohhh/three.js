@@ -74,15 +74,6 @@ renderer.setSize( window.innerWidth, window.innerHeight );
 renderer.setClearColor( 0x000000, 1 );
 document.body.appendChild( renderer.domElement );
 
-// Set up orbit controls
-// left/right: rotate around y-axis (left rotates camera anti-clockwise)
-// up/down:    rotate around (transformed) x-axis (up rotates camera anti-clockwise - limited to +/- 90 degrees)
-// i.e. y rotation applied, THEN x rotation appied
-// i.e. y rotation transforms the x axes.
-// NOTE: orbit controls set camera.lookAt(scene.position)
-var orbit = new THREE.OrbitControls( camera, renderer.domElement );
-orbit.enableZoom = false;
-
 // Set up lights
 var lights = [];
 lights[ 0 ] = new THREE.PointLight( 0xffffff, 1, 0 );
@@ -131,6 +122,12 @@ var options_folder = gui.addFolder('options');
 options_folder.add(options, 'fixed');
 options_folder.add(options, 'axes');
 
+// Set up orbit controls (orbits camera around)
+// NOTE: orbit controls set camera.lookAt(scene.position)
+// NOTE: orbit controls are to be used with a camera, NOT a mesh...
+var orbit = new THREE.OrbitControls( camera, renderer.domElement );
+orbit.enableZoom = false;
+
 // Init mesh
 guis[geom_fn_name](mesh);
 
@@ -139,8 +136,6 @@ scene.add(mesh);
 
 // Build axes and add to scene
 axes = buildAxes( 1000 );
-
-var prevFog = false;               
 
 // The render function
 var render = function () {
