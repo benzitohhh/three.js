@@ -1,177 +1,170 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<title>Three.js Geometry Browser</title>
-		<style>
-		canvas { width: 100%; height: 100% }
-		</style>
-	</head>
-	<body>
-		<script src="../../build/three.min.js"></script>
-		<script src='../../examples/js/libs/dat.gui.min.js'></script>
-		<script src="../../examples/js/controls/OrbitControls.js"></script>
-		<script src="../../examples/js/ParametricGeometries.js"></script>
+        <head>
+                <meta charset="utf-8">
+                <title>Three.js Geometry Browser</title>
+                <style>
+                canvas { width: 100%; height: 100% }
+                </style>
+        </head>
+        <body>
+                <script src="../../build/three.min.js"></script>
+                <script src='../../examples/js/libs/dat.gui.min.js'></script>
+                <script src="../../examples/js/controls/OrbitControls.js"></script>
+                <script src="../../examples/js/ParametricGeometries.js"></script>
 
-		<script src='js/geometry.js'></script>
+                <script src='js/geometry.js'></script>
 
-		<script>
-		var gui = new dat.GUI();
-		var scene = new THREE.Scene();
+                <script>
 
-		// 1. "world space": camera and scene are positioned here
-		// 2. "view space": camera at origin, frustrum params relative to it (i.e. zn/zf positive, in front of camera)
-		// 3. "projection space": frustrum applied
-		// NOTE: orbit controls set camera.lookAt(scene.position)
-		var camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.1, 50 );
-		camera.position.z = 30; // move camera in front of scene
-		camera.position.x = 0;
-		//camera.rotation.y = 0 * Math.PI / 180; // i.e. axis of ration goes through position
-		//camera.lookAt(scene.position);
+function buildAxes( length ) {
+  var axes = new THREE.Object3D();
+  axes.add( buildAxis( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( length, 0, 0 ), 0xFF0000, false ) ); // +X
+  axes.add( buildAxis( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( -length, 0, 0 ), 0xFF0000, true) ); // -X
+  axes.add( buildAxis( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, length, 0 ), 0x00FF00, false ) ); // +Y
+  axes.add( buildAxis( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, -length, 0 ), 0x00FF00, true ) ); // -Y
+  axes.add( buildAxis( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, 0, length ), 0x0000FF, false ) ); // +Z
+  axes.add( buildAxis( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, 0, -length ), 0x0000FF, true ) ); // -Z
+  return axes;
+}
 
-		var renderer = new THREE.WebGLRenderer( { antialias: true } );
-		renderer.setPixelRatio( window.devicePixelRatio );
-		renderer.setSize( window.innerWidth, window.innerHeight );
-		renderer.setClearColor( 0x000000, 1 );
-		document.body.appendChild( renderer.domElement );
+function buildAxis( src, dst, colorHex, dashed ) {
+  var geom = new THREE.Geometry(),
+      mat; 
+  if(dashed) {
+    mat = new THREE.LineDashedMaterial({ linewidth: 3, color: colorHex, dashSize: 3, gapSize: 3 });
+  } else {
+    mat = new THREE.LineBasicMaterial({ linewidth: 3, color: colorHex });
+  }
+  geom.vertices.push( src.clone() );
+  geom.vertices.push( dst.clone() );
+  geom.computeLineDistances(); // This one is SUPER important, otherwise dashed lines will appear as simple plain lines
+  var axis = new THREE.Line( geom, mat, THREE.LineSegments );
+  return axis;
+}
 
-		// The orbit controls rotate camera around world-space origin.
-		// There are two degrees of freedom ()
+// Workaround to remove folders in dat gui
+dat.GUI.prototype.removeFolder = function(name) {
+  var folder = this.__folders[name];
+  if (!folder) {
+    return;
+  }
+  folder.close();
+  this.__ul.removeChild(folder.domElement.parentNode);
+  delete this.__folders[name];
+  this.onResize();
+}
 
-		// up/down:    rotate around x-axis (up rotates camera anti-clockwise)
-		// left/right: rotate around y-axis (left rotates camera anti-clockwise)
+// Set up gui
+var gui = new dat.GUI();
 
-		// x-axis rotation limited to +/- 90 degrees
-		// y-axis rotation is unlimited
+// Set up scene, camera
+// 1. "world space": camera and scene are positioned here
+// 2. "view space": camera at origin, frustrum params relative to it (i.e. zn/zf positive, in front of camera)
+// 3. "projection space": frustrum applied
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.1, 50 );
+camera.position.z = 30; // move camera in front of scene
+camera.position.x = 0;
 
-		// x-axis rotation is
+// Set up renderer
+var renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setPixelRatio( window.devicePixelRatio );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0x000000, 1 );
+document.body.appendChild( renderer.domElement );
 
-		var orbit = new THREE.OrbitControls( camera, renderer.domElement );
-		orbit.enableZoom = false;
+// Set up orbit controls
+// left/right: rotate around y-axis (left rotates camera anti-clockwise)
+// up/down:    rotate around (transformed) x-axis (up rotates camera anti-clockwise - limited to +/- 90 degrees)
+// i.e. y rotation applied, THEN x rotation appied
+// i.e. y rotation transforms the x axes.
+// NOTE: orbit controls set camera.lookAt(scene.position)
+var orbit = new THREE.OrbitControls( camera, renderer.domElement );
+orbit.enableZoom = false;
 
-		var lights = [];
-		lights[ 0 ] = new THREE.PointLight( 0xffffff, 1, 0 );
-		lights[ 1 ] = new THREE.PointLight( 0xffffff, 1, 0 );
-		lights[ 2 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+// Set up lights
+var lights = [];
+lights[ 0 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+lights[ 1 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+lights[ 2 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+lights[ 0 ].position.set( 200, 0, 0 );
+lights[ 1 ].position.set( 100, 200, 100 );
+lights[ 2 ].position.set( - 100, - 200, - 100 );
+scene.add( lights[ 0 ] );
+scene.add( lights[ 1 ] );
+scene.add( lights[ 2 ] );
 
-		// lights[ 0 ].position.set( 0, 200, 0 );
-		lights[ 0 ].position.set( 200, 0, 0 );
-		lights[ 1 ].position.set( 100, 200, 100 );
-		lights[ 2 ].position.set( - 100, - 200, - 100 );
+// Set up the mesh
+var mesh = new THREE.Object3D();
+mesh.add( new THREE.LineSegments(   // children[0]: the wireframe
+  new THREE.Geometry(),             // geometry
+  new THREE.LineBasicMaterial( {    // material   (white, 50% transparent)
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.5
+  } )
+) );
+mesh.add( new THREE.Mesh(           // children[1]: solid material
+  new THREE.Geometry(),             // geometry
+  new THREE.MeshPhongMaterial( {    // material   ()
+    color: 0x156289,    // light blue
+    emissive: 0x072534, // dark blue
+    side: THREE.DoubleSide,
+    shading: THREE.FlatShading
+  } )
+) );
 
-		scene.add( lights[ 0 ] );
-		// scene.add( lights[ 1 ] );
-		// scene.add( lights[ 2 ] );
+// Set up Geom GUI
+var geom_fn_names = ["BoxGeometry", "CylinderGeometry", "ConeGeometry", "CircleGeometry", "DodecahedronGeometry", "IcosahedronGeometry", "LatheGeometry", "OctahedronGeometry", "PlaneGeometry", "RingGeometry", "SphereGeometry", "TetrahedronGeometry", "TextGeometry", "TorusGeometry", "TorusKnotGeometry", "ParametricGeometry", "TubeGeometry", "ShapeGeometry", "ExtrudeGeometry" ];
+var geom_fn_name = geom_fn_names[13];
+var geom_folder = gui.addFolder('geom_select');
+geom_folder.add({ geom_fn_name: geom_fn_name }, 'geom_fn_name', geom_fn_names).onChange(function(new_geom_fn_name) {
+  gui.removeFolder('THREE.' + geom_fn_name);
+  geom_fn_name = new_geom_fn_name;
+  guis[new_geom_fn_name](mesh);
+});
 
-		var mesh = new THREE.Object3D();
+// Set up options GUI
+var options = { fixed: true, axes: true };
+var options_folder = gui.addFolder('options');
+options_folder.add(options, 'fixed');
+options_folder.add(options, 'axes');
 
-		mesh.add( new THREE.LineSegments(                     // children[0]: the wireframe
+// Init mesh
+guis[geom_fn_name](mesh);
 
-			new THREE.Geometry(),                         // geometry
+// Add mesh to scene
+scene.add(mesh);
 
-			new THREE.LineBasicMaterial( {                // material   (white, 50% transparent)
-				color: 0xffffff,
-				transparent: true,
-				opacity: 0.5
-			} )
+// Build axes and add to scene
+axes = buildAxes( 1000 );
 
-		) );
+var prevFog = false;               
 
-		mesh.add( new THREE.Mesh(                             // children[1]: solid material
+// The render function
+var render = function () {
+  requestAnimationFrame( render );
+  if (! options.fixed ) {
+    mesh.rotation.x += 0.005;
+    mesh.rotation.y += 0.005;
+  }
+  if (options.axes) {
+    scene.add( axes );    
+  } else {
+    scene.remove(axes);
+  }
+  renderer.render( scene, camera );
+};
 
-			new THREE.Geometry(),                         // geometry
+window.addEventListener( 'resize', function () {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize( window.innerWidth, window.innerHeight );
+}, false );
 
-			new THREE.MeshPhongMaterial( {                // material   ()
-				color: 0x156289,    // light blue
-				emissive: 0x072534, // dark blue
-				side: THREE.DoubleSide,
-				shading: THREE.FlatShading
-			} )
-
-		) );
-
-		//var options = chooseFromHash( mesh );
-
-		var geom_fn_name =
-		    // "BoxBufferGeometry"
-		    // "BoxGeometry"
-		    // "CylinderBufferGeometry"
-		    "CylinderGeometry"
-		    // "ConeBufferGeometry"
-		    // "ConeGeometry"
-		    // "CircleBufferGeometry"
-		    // "CircleGeometry"
-		    // "DodecahedronGeometry"
-		    // "DodecahedronBufferGeometry"
-		    // "IcosahedronGeometry"
-		    // "IcosahedronBufferGeometry"
-		    // "LatheBufferGeometry"
-		    // "LatheGeometry"
-		    // "OctahedronGeometry"
-		    // "OctahedronBufferGeometry"
-		    // "PlaneBufferGeometry"
-		    // "PlaneGeometry"
-		    // "RingBufferGeometry"
-		    // "RingGeometry"
-		    // "SphereBufferGeometry"
-		    // "SphereGeometry"
-		    // "TetrahedronGeometry"
-		    // "TetrahedronBufferGeometry"
-		    // "TextGeometry"
-		    // "TorusBufferGeometry"
-		    // "TorusGeometry"
-		    // "TorusKnotBufferGeometry"
-		    // "TorusKnotGeometry"
-		    // "ParametricBufferGeometry"
-		    // "ParametricGeometry"
-		    // "TubeGeometry"
-		    // "TubeBufferGeometry"
-		    // "ShapeGeometry"
-		    // "ShapeBufferGeometry"
-		    // "ExtrudeGeometry"
-		;
-
-		// guis.TetrahedronGeometry(mesh);
-		// guis.DodecahedronGeometry(mesh);
-		//guis.TorusGeometry(mesh);
-		// guis.TorusKnotGeometry(mesh);
-                guis[geom_fn_name](mesh);
-
-
-		mesh.rotation.x = 90 * Math.PI / 180;
-		var options = {};
-
-		scene.add( mesh );
-
-		var prevFog = false;
-
-
-
-
-		var render = function () {
-
-			requestAnimationFrame( render );
-
-			if (! options.fixed ) {
-			  mesh.rotation.x += 0.005;
-			  mesh.rotation.y += 0.005;
-			}
-
-			renderer.render( scene, camera );
-
-		};
-
-		window.addEventListener( 'resize', function () {
-
-			camera.aspect = window.innerWidth / window.innerHeight;
-			camera.updateProjectionMatrix();
-
-			renderer.setSize( window.innerWidth, window.innerHeight );
-
-		}, false );
-
-		render();
-
-		</script>
-	</body>
+// Call render
+render();
+                </script>
+        </body>
 </html>
