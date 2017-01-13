@@ -8,7 +8,9 @@
     </style>
   </head>
   <body>
-    <script src="../../build/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.js"></script>
+    // <script src="../../build/three.min.js"></script>
+    <script src="../../build/three.js"></script>
     <script src='../../examples/js/libs/dat.gui.min.js'></script>
     <script src="../../examples/js/controls/OrbitControls.js"></script>
     <script src="../../examples/js/ParametricGeometries.js"></script>
@@ -16,6 +18,18 @@
     <script src='js/geometry.js'></script>
 
     <script>
+var LIGHT_BLUE = "0x156289";
+var DARK_BLUE = "0x072534";
+
+var OFF_WHITE = "0xfee0dc";
+var CIPHER_RED = "0xd70035";
+
+// set up color scale
+var color = d3.scale.linear()
+    .domain([0, 1])
+    .range(['fee0dc', 'd70035']) // offwhite to cipherRed
+;
+
 function buildAxes( length ) {
   var axes = new THREE.Object3D();
   axes.add( buildAxis( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( length, 0, 0 ), 0xFF0000, false ) ); // +X
@@ -41,9 +55,6 @@ function buildAxis( src, dst, colorHex, dashed ) {
   var axis = new THREE.Line( geom, mat, THREE.LineSegments );
   return axis;
 }
-
-// Set up gui
-var gui = new dat.GUI();
 
 // Set up scene, camera
 // 1. "world space": camera and scene are positioned here
@@ -73,31 +84,65 @@ scene.add( lights[ 0 ] );
 scene.add( lights[ 1 ] );
 scene.add( lights[ 2 ] );
 
-
-var data = {
-  radius : 10,
-  detail : 2
+// // Set up options GUI
+var gui = new dat.GUI();
+var options = {
+  fixed: true,
+  axes: true,
+  detail: 0,
+  point_factor: 1.0,
+  scale: 10
 };
+var options_folder = gui.addFolder('options');
+options_folder.add(options, 'fixed');
+options_folder.add(options, 'axes');
+options_folder.add(options, 'scale', 5, 20);
+options_folder.add(options, 'point_factor', 1.0, 1.09);
+options_folder.add(options, 'detail', [0, 1, 2, 3]);
+options_folder.open();
 
-var geom = new THREE.IcosahedronGeometry(data.radius, data.detail);
+function get_ico_geom(options) {
+  var geom = new THREE.IcosahedronGeometry(options.scale, options.detail);
 
-var material = new THREE.MeshPhongMaterial({
-  color: 0x156289,    // light blue
-  emissive: 0x072534, // dark blue
+  // TODO: when detail >= 1, where are the extra vertices added?
+
+  // try pulling out every other vertex
+  geom.vertices.forEach(function(v, i) {
+    if (i%4 == 0) {
+      v.x *= options.point_factor;
+      v.y *= options.point_factor;
+      v.z *= options.point_factor;
+    }
+  });
+
+  return geom;
+}
+
+//var geom = get_ico_geom(options);
+
+var red_white_light_material = new THREE.MeshPhongMaterial({
+  color: +OFF_WHITE,
+  emissive: +CIPHER_RED,
   side: THREE.DoubleSide,
   shading: THREE.FlatShading
 });
 
-var cipher_mesh = new THREE.Mesh(geom, material);
+var blue_material = new THREE.MeshPhongMaterial({
+  color: +LIGHT_BLUE,    // light blue
+  emissive: +DARK_BLUE, // dark blue
+  side: THREE.DoubleSide,
+  shading: THREE.FlatShading
+});
+
+var material =
+    //red_white_light_material
+    blue_material
+    ;
+
+var cipher_mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(), material);
 
 // Add mesh to scene
 scene.add(cipher_mesh);
-
-// // Set up options GUI
-var options = { fixed: true, axes: true };
-var options_folder = gui.addFolder('options');
-options_folder.add(options, 'fixed');
-options_folder.add(options, 'axes');
 
 // Set up orbit controls (orbits camera around)
 // NOTE: orbit controls set camera.lookAt(scene.position)
@@ -111,15 +156,22 @@ var axes = buildAxes( 1000 );
 // The render function
 var render = function () {
   requestAnimationFrame( render );
+
   if (! options.fixed ) {
-    mesh.rotation.x += 0.005;
-    mesh.rotation.y += 0.005;
+    cipher_mesh.rotation.x += 0.005;
+    cipher_mesh.rotation.y += 0.005;
   }
+
   if (options.axes) {
     scene.add( axes );
   } else {
     scene.remove(axes);
   }
+
+  // update geometry
+  var geom = get_ico_geom(options);
+  cipher_mesh.geometry = geom;
+
   renderer.render( scene, camera );
 };
 
