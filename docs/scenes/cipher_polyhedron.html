@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+        <head>
+                <meta charset="utf-8">
+                <title>Three.js Geometry Browser</title>
+                <style>
+                canvas { width: 100%; height: 100% }
+                </style>
+        </head>
+        <body>
+                <script src="../../build/three.min.js"></script>
+                <script src='../../examples/js/libs/dat.gui.min.js'></script>
+                <script src="../../examples/js/controls/OrbitControls.js"></script>
+                <script src="../../examples/js/ParametricGeometries.js"></script>
+
+                <script src='js/geometry.js'></script>
+
+                <script>
+
+function buildAxes( length ) {
+  var axes = new THREE.Object3D();
+  axes.add( buildAxis( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( length, 0, 0 ), 0xFF0000, false ) ); // +X
+  axes.add( buildAxis( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( -length, 0, 0 ), 0xFF0000, true) ); // -X
+  axes.add( buildAxis( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, length, 0 ), 0x00FF00, false ) ); // +Y
+  axes.add( buildAxis( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, -length, 0 ), 0x00FF00, true ) ); // -Y
+  axes.add( buildAxis( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, 0, length ), 0x0000FF, false ) ); // +Z
+  axes.add( buildAxis( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, 0, -length ), 0x0000FF, true ) ); // -Z
+  return axes;
+}
+
+function buildAxis( src, dst, colorHex, dashed ) {
+  var geom = new THREE.Geometry(),
+      mat; 
+  if(dashed) {
+    mat = new THREE.LineDashedMaterial({ linewidth: 3, color: colorHex, dashSize: 3, gapSize: 3 });
+  } else {
+    mat = new THREE.LineBasicMaterial({ linewidth: 3, color: colorHex });
+  }
+  geom.vertices.push( src.clone() );
+  geom.vertices.push( dst.clone() );
+  geom.computeLineDistances(); // This one is SUPER important, otherwise dashed lines will appear as simple plain lines
+  var axis = new THREE.Line( geom, mat, THREE.LineSegments );
+  return axis;
+}
+
+// Set up gui
+var gui = new dat.GUI();
+
+// Set up scene, camera
+// 1. "world space": camera and scene are positioned here
+// 2. "view space": camera at origin, frustrum params relative to it (i.e. zn/zf positive, in front of camera)
+// 3. "projection space": frustrum applied
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.1, 50 );
+camera.position.z = 30; // move camera in front of scene
+camera.position.x = 0;
+
+// Set up renderer
+var renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setPixelRatio( window.devicePixelRatio );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0x000000, 1 );
+document.body.appendChild( renderer.domElement );
+
+// Set up lights
+var lights = [];
+lights[ 0 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+lights[ 1 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+lights[ 2 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+lights[ 0 ].position.set( 200, 0, 0 );
+lights[ 1 ].position.set( 100, 200, 100 );
+lights[ 2 ].position.set( - 100, - 200, - 100 );
+scene.add( lights[ 0 ] );
+scene.add( lights[ 1 ] );
+scene.add( lights[ 2 ] );
+
+
+var data = {
+  radius : 10,
+  detail : 2
+};
+
+var geom = new THREE.IcosahedronGeometry(data.radius, data.detail);
+
+var material = new THREE.MeshPhongMaterial({
+  color: 0x156289,    // light blue
+  emissive: 0x072534, // dark blue
+  side: THREE.DoubleSide,
+  shading: THREE.FlatShading
+});
+
+var cipher_mesh = new THREE.Mesh(geom, material);
+
+// Add mesh to scene
+scene.add(cipher_mesh);
+
+// // Set up options GUI
+var options = { fixed: true, axes: true };
+var options_folder = gui.addFolder('options');
+options_folder.add(options, 'fixed');
+options_folder.add(options, 'axes');
+
+// Set up orbit controls (orbits camera around)
+// NOTE: orbit controls set camera.lookAt(scene.position)
+// NOTE: orbit controls are to be used with a camera, NOT a mesh...
+var orbit = new THREE.OrbitControls( camera, renderer.domElement );
+orbit.enableZoom = false;
+
+// Build axes and add to scene
+var axes = buildAxes( 1000 );
+
+// The render function
+var render = function () {
+  requestAnimationFrame( render );
+  if (! options.fixed ) {
+    mesh.rotation.x += 0.005;
+    mesh.rotation.y += 0.005;
+  }
+  if (options.axes) {
+    scene.add( axes );    
+  } else {
+    scene.remove(axes);
+  }
+  renderer.render( scene, camera );
+};
+
+window.addEventListener( 'resize', function () {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize( window.innerWidth, window.innerHeight );
+}, false );
+
+// Call render
+render();
+                </script>
+        </body>
+</html>
