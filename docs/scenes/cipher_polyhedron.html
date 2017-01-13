@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
-        <head>
-                <meta charset="utf-8">
-                <title>Three.js Geometry Browser</title>
-                <style>
-                canvas { width: 100%; height: 100% }
-                </style>
-        </head>
-        <body>
-                <script src="../../build/three.min.js"></script>
-                <script src='../../examples/js/libs/dat.gui.min.js'></script>
-                <script src="../../examples/js/controls/OrbitControls.js"></script>
-                <script src="../../examples/js/ParametricGeometries.js"></script>
+  <head>
+    <meta charset="utf-8">
+    <title>Three.js Geometry Browser</title>
+    <style>
+      canvas { width: 100%; height: 100% }
+    </style>
+  </head>
+  <body>
+    <script src="../../build/three.min.js"></script>
+    <script src='../../examples/js/libs/dat.gui.min.js'></script>
+    <script src="../../examples/js/controls/OrbitControls.js"></script>
+    <script src="../../examples/js/ParametricGeometries.js"></script>
 
-                <script src='js/geometry.js'></script>
+    <script src='js/geometry.js'></script>
 
-                <script>
+    <script>
 
 function buildAxes( length ) {
   var axes = new THREE.Object3D();
@@ -30,7 +30,7 @@ function buildAxes( length ) {
 
 function buildAxis( src, dst, colorHex, dashed ) {
   var geom = new THREE.Geometry(),
-      mat; 
+      mat;
   if(dashed) {
     mat = new THREE.LineDashedMaterial({ linewidth: 3, color: colorHex, dashSize: 3, gapSize: 3 });
   } else {
@@ -117,7 +117,7 @@ var render = function () {
     mesh.rotation.y += 0.005;
   }
   if (options.axes) {
-    scene.add( axes );    
+    scene.add( axes );
   } else {
     scene.remove(axes);
   }
@@ -132,6 +132,6 @@ window.addEventListener( 'resize', function () {
 
 // Call render
 render();
-                </script>
-        </body>
+    </script>
+  </body>
 </html>
