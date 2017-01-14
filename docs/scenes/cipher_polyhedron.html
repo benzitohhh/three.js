@@ -87,10 +87,10 @@ scene.add( lights[ 2 ] );
 // // Set up options GUI
 var gui = new dat.GUI();
 var options = {
-  fixed: true,
+  fixed: false,
   axes: true,
   detail: 0,
-  point_factor: 1.0,
+  point_factor: 1.05,
   scale: 10
 };
 var options_folder = gui.addFolder('options');
@@ -102,44 +102,53 @@ options_folder.add(options, 'detail', [0, 1, 2, 3]);
 options_folder.open();
 
 function get_ico_geom(options) {
-  var geom = new THREE.IcosahedronGeometry(options.scale, options.detail);
+  //var geom = new THREE.IcosahedronGeometry(options.scale, options.detail);
 
-  // TODO: when detail >= 1, where are the extra vertices added?
 
-  // try pulling out every other vertex
+  //console.log(geom);
+
+  // For a non-buffered geom, you can modify the vertices directly...
+  var geom = new THREE.IcosahedronGeometry(options.scale, 2);
   geom.vertices.forEach(function(v, i) {
-    if (i%4 == 0) {
+    if (i%10 == 0) {
       v.x *= options.point_factor;
       v.y *= options.point_factor;
       v.z *= options.point_factor;
     }
   });
 
+  // // For a buffer geom...
+  // var geom = new THREE.IcosahedronBufferGeometry(options.scale, 2);
+  // geom.attributes.position.needsUpdate = true;
+  // var position = geom.attributes.position;
+  // var idxs = {
+  //   23: true
+  // };
+  // for (var i = 0; i < position.count; i++) {
+  //   var p = i % 48;
+  //   if (p in idxs) {
+  //     var x = position.getX(i);
+  //     var y = position.getY(i);
+  //     var z = position.getZ(i);
+  //     position.setX(i, x * options.point_factor);
+  //     position.setY(i, y * options.point_factor);
+  //     position.setZ(i, z * options.point_factor);
+  //   }
+  // }
+
   return geom;
 }
 
-//var geom = get_ico_geom(options);
-
-var red_white_light_material = new THREE.MeshPhongMaterial({
-  color: +OFF_WHITE,
-  emissive: +CIPHER_RED,
-  side: THREE.DoubleSide,
-  shading: THREE.FlatShading
-});
-
-var blue_material = new THREE.MeshPhongMaterial({
+var material = new THREE.MeshPhongMaterial({
   color: +LIGHT_BLUE,    // light blue
   emissive: +DARK_BLUE, // dark blue
   side: THREE.DoubleSide,
   shading: THREE.FlatShading
 });
 
-var material =
-    //red_white_light_material
-    blue_material
-    ;
+var geom = get_ico_geom(options);
 
-var cipher_mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(), material);
+var cipher_mesh = new THREE.Mesh(geom, material);
 
 // Add mesh to scene
 scene.add(cipher_mesh);
@@ -168,10 +177,9 @@ var render = function () {
     scene.remove(axes);
   }
 
-  // update geometry
+  // update
   var geom = get_ico_geom(options);
   cipher_mesh.geometry = geom;
-
   renderer.render( scene, camera );
 };
 
